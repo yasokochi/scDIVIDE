@@ -5,6 +5,9 @@ scBURST — growth-dependent diffusion SDE for unbalanced optimal transport.
 from .model import BranchingSDE, BranchingSDE_TimeDep
 from .networks import (
     PotentialNetwork,
+    TimeDependentPotentialNetwork,
+    VelocityNetwork,
+    TimeDependentVelocityNetwork,
     NonNegativeGrowthNetwork,
     NonNegativeTimeDependentGrowthNetwork,
     initialize_weights,
@@ -25,6 +28,9 @@ __all__ = [
     "BranchingSDE",
     "BranchingSDE_TimeDep",
     "PotentialNetwork",
+    "TimeDependentPotentialNetwork",
+    "VelocityNetwork",
+    "TimeDependentVelocityNetwork",
     "NonNegativeGrowthNetwork",
     "NonNegativeTimeDependentGrowthNetwork",
     "initialize_weights",

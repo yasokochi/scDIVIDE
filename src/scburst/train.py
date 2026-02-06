@@ -15,7 +15,6 @@ import random
 import torch
 import torchsde
 
-from .model import BranchingSDE_TimeDep
 from .sinkhorn import compute_cost_scale, sinkhorn_divergence
 from .regularizers import REGISTRY as REG_REGISTRY
 
@@ -281,14 +280,14 @@ def train_step(
     if coeff > 0:
         val = torch.tensor(0.0, device=device)
         for k in range(len(eval_xs)):
-            val = val + REG_REGISTRY["potential_hessian"](func, eval_xs[k])
+            val = val + REG_REGISTRY["potential_hessian"](func, eval_ts[k], eval_xs[k])
         val = val / len(eval_xs)
         reg_losses["potential_hessian"] = val.item()
         reg_total = reg_total + coeff * val
 
     # growth_temporal_smoothness
     coeff = reg_config.get("growth_temporal_smoothness", 0.0)
-    if coeff > 0 and isinstance(func, BranchingSDE_TimeDep) and len(eval_ts) >= 2:
+    if coeff > 0 and len(eval_ts) >= 2:
         val = torch.tensor(0.0, device=device)
         count = 0
         for k in range(len(eval_ts) - 1):
@@ -299,6 +298,31 @@ def train_step(
         if count > 0:
             val = val / count
         reg_losses["growth_temporal_smoothness"] = val.item()
+        reg_total = reg_total + coeff * val
+
+    # velocity_spatial_smoothness
+    coeff = reg_config.get("velocity_spatial_smoothness", 0.0)
+    if coeff > 0:
+        val = torch.tensor(0.0, device=device)
+        for k in range(len(eval_xs)):
+            val = val + REG_REGISTRY["velocity_spatial_smoothness"](func, eval_ts[k], eval_xs[k])
+        val = val / len(eval_xs)
+        reg_losses["velocity_spatial_smoothness"] = val.item()
+        reg_total = reg_total + coeff * val
+
+    # velocity_temporal_smoothness
+    coeff = reg_config.get("velocity_temporal_smoothness", 0.0)
+    if coeff > 0 and len(eval_ts) >= 2:
+        val = torch.tensor(0.0, device=device)
+        count = 0
+        for k in range(len(eval_ts) - 1):
+            val = val + REG_REGISTRY["velocity_temporal_smoothness"](
+                func, eval_ts[k], eval_ts[k + 1], eval_xs[k]
+            )
+            count += 1
+        if count > 0:
+            val = val / count
+        reg_losses["velocity_temporal_smoothness"] = val.item()
         reg_total = reg_total + coeff * val
 
     total_loss = sink_loss_total + reg_total

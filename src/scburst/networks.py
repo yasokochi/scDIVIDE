@@ -201,6 +201,102 @@ class NonNegativeTimeDependentGrowthNetwork(nn.Module):
         return F.softplus(self.net(tx))
 
 
+def _broadcast_t(t, x):
+    """Broadcast scalar/0-dim/1-dim t to (batch, 1) matching x."""
+    batch_size = x.shape[0]
+    if isinstance(t, (int, float)):
+        return torch.full((batch_size, 1), t, device=x.device, dtype=x.dtype)
+    if t.dim() == 0:
+        return t.expand(batch_size, 1).reshape(batch_size, 1)
+    return t.reshape(batch_size, 1)
+
+
+class TimeDependentPotentialNetwork(nn.Module):
+    """phi(t, x) -> scalar. gradient(t, x) returns nabla_x phi(t, x)."""
+
+    def __init__(self, in_dim, hidden_dim=64, n_hiddens=4,
+                 activation="tanh", arch="mlp",
+                 use_layer_norm=False, dropout=0.0):
+        super().__init__()
+        self.in_dim = in_dim
+        if arch == "resnet":
+            self.net = ResNet(in_dim + 1, 1, hidden_dim, n_hiddens,
+                              activation=activation,
+                              use_layer_norm=use_layer_norm,
+                              dropout=dropout)
+        else:
+            self.net = MLP(in_dim + 1, 1, hidden_dim, n_hiddens,
+                           activation=activation,
+                           use_layer_norm=use_layer_norm,
+                           dropout=dropout)
+
+    def forward(self, t, x):
+        t_tensor = _broadcast_t(t, x)
+        tx = torch.cat([t_tensor, x], dim=1)
+        return self.net(tx)
+
+    def gradient(self, t, x):
+        """nabla_x phi(t, x) — gradient w.r.t. x only."""
+        if not x.requires_grad:
+            x = x.requires_grad_(True)
+        phi = self.forward(t, x)
+        grad_phi = torch.autograd.grad(
+            outputs=phi,
+            inputs=x,
+            grad_outputs=torch.ones_like(phi),
+            create_graph=True,
+            retain_graph=True,
+        )[0]
+        return grad_phi
+
+
+class VelocityNetwork(nn.Module):
+    """v(x) -> d-dim vector (free-form MLP)."""
+
+    def __init__(self, in_dim, hidden_dim=64, n_hiddens=4,
+                 activation="tanh", arch="mlp",
+                 use_layer_norm=False, dropout=0.0):
+        super().__init__()
+        if arch == "resnet":
+            self.net = ResNet(in_dim, in_dim, hidden_dim, n_hiddens,
+                              activation=activation,
+                              use_layer_norm=use_layer_norm,
+                              dropout=dropout)
+        else:
+            self.net = MLP(in_dim, in_dim, hidden_dim, n_hiddens,
+                           activation=activation,
+                           use_layer_norm=use_layer_norm,
+                           dropout=dropout)
+
+    def forward(self, x):
+        return self.net(x)
+
+
+class TimeDependentVelocityNetwork(nn.Module):
+    """v(t, x) -> d-dim vector (free-form MLP)."""
+
+    def __init__(self, in_dim, hidden_dim=64, n_hiddens=4,
+                 activation="tanh", arch="mlp",
+                 use_layer_norm=False, dropout=0.0):
+        super().__init__()
+        self.in_dim = in_dim
+        if arch == "resnet":
+            self.net = ResNet(in_dim + 1, in_dim, hidden_dim, n_hiddens,
+                              activation=activation,
+                              use_layer_norm=use_layer_norm,
+                              dropout=dropout)
+        else:
+            self.net = MLP(in_dim + 1, in_dim, hidden_dim, n_hiddens,
+                           activation=activation,
+                           use_layer_norm=use_layer_norm,
+                           dropout=dropout)
+
+    def forward(self, t, x):
+        t_tensor = _broadcast_t(t, x)
+        tx = torch.cat([t_tensor, x], dim=1)
+        return self.net(tx)
+
+
 # ---------------------------------------------------------------------------
 # Weight initialization
 # ---------------------------------------------------------------------------
