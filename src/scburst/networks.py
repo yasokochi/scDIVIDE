@@ -148,8 +148,8 @@ class PotentialNetwork(nn.Module):
         return grad_phi
 
 
-class NonNegativeGrowthNetwork(nn.Module):
-    """g(x) -> scalar >= 0 (softplus on output)."""
+class ActivityNetwork(nn.Module):
+    """beta(x) -> scalar (unconstrained, no activation on output)."""
 
     def __init__(self, in_dim, hidden_dim=64, n_hiddens=3,
                  activation="tanh", arch="mlp",
@@ -167,11 +167,11 @@ class NonNegativeGrowthNetwork(nn.Module):
                            dropout=dropout)
 
     def forward(self, x):
-        return F.softplus(self.net(x))
+        return self.net(x)
 
 
-class NonNegativeTimeDependentGrowthNetwork(nn.Module):
-    """g(t, x) -> scalar >= 0 (softplus on output)."""
+class TimeDependentActivityNetwork(nn.Module):
+    """beta(t, x) -> scalar (unconstrained, no activation on output)."""
 
     def __init__(self, in_dim, hidden_dim=64, n_hiddens=3,
                  activation="tanh", arch="mlp",
@@ -190,15 +190,9 @@ class NonNegativeTimeDependentGrowthNetwork(nn.Module):
                            dropout=dropout)
 
     def forward(self, t, x):
-        batch_size = x.shape[0]
-        if isinstance(t, (int, float)):
-            t_tensor = torch.full((batch_size, 1), t, device=x.device, dtype=x.dtype)
-        elif t.dim() == 0:
-            t_tensor = t.expand(batch_size, 1).reshape(batch_size, 1)
-        else:
-            t_tensor = t.reshape(batch_size, 1)
+        t_tensor = _broadcast_t(t, x)
         tx = torch.cat([t_tensor, x], dim=1)
-        return F.softplus(self.net(tx))
+        return self.net(tx)
 
 
 def _broadcast_t(t, x):

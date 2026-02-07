@@ -1,12 +1,18 @@
 """
 BranchingSDE model with growth-dependent diffusion.
 
-PDE:  d rho/dt = -div(v rho) + (sigma^2 + g delta^2)/2 * Laplacian(rho) + g rho
-SDE:  dz = v(z) dt + sqrt(sigma^2 + g delta^2) dW
+PDE:  d rho/dt = -div(v rho) + (sigma^2 + b delta^2)/2 * Laplacian(rho) + g rho
+SDE:  dz = v(z) dt + sqrt(sigma^2 + b delta^2) dW
       d(lnw) = g dt
 
+(beta, alpha) parametrization:
+  beta(x) = NN output (unconstrained)
+  b(x) = r0 * exp(beta(x))       (birth rate)
+  d(x) = r0 * exp(beta(x)) * alpha  (death rate)
+  g(x) = r0 * exp(beta(x)) * (1 - alpha)  (net growth)
+
 Supports configurable velocity type (potential / free-form) and
-time dependence for both velocity and growth networks.
+time dependence for both velocity and activity networks.
 """
 
 import torch
@@ -17,23 +23,32 @@ from .networks import (
     TimeDependentPotentialNetwork,
     VelocityNetwork,
     TimeDependentVelocityNetwork,
-    NonNegativeGrowthNetwork,
-    NonNegativeTimeDependentGrowthNetwork,
+    ActivityNetwork,
+    TimeDependentActivityNetwork,
     initialize_weights,
 )
 
 
 class BranchingSDE(nn.Module):
     """
-    Unified growth-dependent diffusion SDE.
+    Unified growth-dependent diffusion SDE with (beta, alpha) parametrization.
 
     State: y = (z, lnw)  where z is position, lnw is log-weight.
     Compatible with torchsde.
 
+    Parametrization:
+        beta(x) = NN output (unconstrained)
+        b(x) = r0 * exp(beta(x))         (birth rate)
+        d(x) = r0 * exp(beta(x)) * alpha (death rate)
+        g(x) = r0 * exp(beta(x)) * (1 - alpha) (net growth)
+        diffusion = sqrt(sigma^2 + b * delta^2)
+
     Args:
         velocity_type: "potential" (v = -nabla phi) or "free" (v = MLP output).
         velocity_time_dependent: If True, velocity depends on (t, x).
-        growth_time_dependent: If True, growth depends on (t, x).
+        activity_time_dependent: If True, activity beta depends on (t, x).
+        alpha: Death-to-birth ratio in [0, 1]. Default 0.0 (pure proliferation).
+        r0: Baseline activity scale. Default 1.0.
     """
 
     sde_type = "ito"
@@ -44,6 +59,8 @@ class BranchingSDE(nn.Module):
         in_out_dim,
         sigma=0.05,
         delta=0.1,
+        alpha=0.0,
+        r0=1.0,
         # Velocity config
         velocity_type="potential",
         velocity_time_dependent=False,
@@ -53,24 +70,26 @@ class BranchingSDE(nn.Module):
         velocity_arch="mlp",
         velocity_layer_norm=False,
         velocity_dropout=0.0,
-        # Growth config
-        growth_time_dependent=False,
-        growth_hidden_dim=64,
-        growth_n_hiddens=3,
-        growth_activation="tanh",
-        growth_arch="mlp",
-        growth_layer_norm=False,
-        growth_dropout=0.0,
+        # Activity config
+        activity_time_dependent=False,
+        activity_hidden_dim=64,
+        activity_n_hiddens=3,
+        activity_activation="tanh",
+        activity_arch="mlp",
+        activity_layer_norm=False,
+        activity_dropout=0.0,
     ):
         super().__init__()
         self.in_out_dim = in_out_dim
         self.sigma = sigma
         self.delta = delta
+        self.alpha = alpha
+        self.r0 = r0
 
         # Flags
         self.velocity_type = velocity_type
         self.velocity_time_dependent = velocity_time_dependent
-        self.growth_time_dependent = growth_time_dependent
+        self.activity_time_dependent = activity_time_dependent
         self.has_potential = (velocity_type == "potential")
 
         # --- Velocity network (4 variants) ---
@@ -99,20 +118,20 @@ class BranchingSDE(nn.Module):
                 "Must be 'potential' or 'free'."
             )
 
-        # --- Growth network (2 variants) ---
-        grw_kw = dict(
+        # --- Activity network (2 variants) ---
+        act_kw = dict(
             in_dim=in_out_dim,
-            hidden_dim=growth_hidden_dim,
-            n_hiddens=growth_n_hiddens,
-            activation=growth_activation,
-            arch=growth_arch,
-            use_layer_norm=growth_layer_norm,
-            dropout=growth_dropout,
+            hidden_dim=activity_hidden_dim,
+            n_hiddens=activity_n_hiddens,
+            activation=activity_activation,
+            arch=activity_arch,
+            use_layer_norm=activity_layer_norm,
+            dropout=activity_dropout,
         )
-        if growth_time_dependent:
-            self.growth_net = NonNegativeTimeDependentGrowthNetwork(**grw_kw)
+        if activity_time_dependent:
+            self.activity_net = TimeDependentActivityNetwork(**act_kw)
         else:
-            self.growth_net = NonNegativeGrowthNetwork(**grw_kw)
+            self.activity_net = ActivityNetwork(**act_kw)
 
     # ------------------------------------------------------------------
     # Public API — always takes (t, z)
@@ -131,12 +150,25 @@ class BranchingSDE(nn.Module):
             else:
                 return self.velocity_net(z)
 
-    def growth(self, t, z):
-        """g(t, z) — t is ignored when growth is time-independent."""
-        if self.growth_time_dependent:
-            return self.growth_net(t, z)
+    def activity(self, t, z):
+        """beta(t, z) — raw NN output (unconstrained)."""
+        if self.activity_time_dependent:
+            return self.activity_net(t, z)
         else:
-            return self.growth_net(z)
+            return self.activity_net(z)
+
+    def birth_rate(self, t, z):
+        """b(t, z) = r0 * exp(beta(t, z))."""
+        beta = self.activity(t, z)
+        return self.r0 * torch.exp(beta)
+
+    def death_rate(self, t, z):
+        """d(t, z) = r0 * exp(beta(t, z)) * alpha."""
+        return self.birth_rate(t, z) * self.alpha
+
+    def growth(self, t, z):
+        """g(t, z) = r0 * exp(beta(t, z)) * (1 - alpha)."""
+        return self.birth_rate(t, z) * (1 - self.alpha)
 
     def potential(self, t, z):
         """phi(t, z) — only available for velocity_type='potential'."""
@@ -166,15 +198,15 @@ class BranchingSDE(nn.Module):
         return torch.cat([v, g_val], dim=1)
 
     def g(self, t, y):
-        """Diffusion for torchsde. sqrt(sigma^2 + g*delta^2) for z, 0 for lnw."""
+        """Diffusion for torchsde. sqrt(sigma^2 + b*delta^2) for z, 0 for lnw."""
         z = y[:, :self.in_out_dim]
 
         with torch.set_grad_enabled(True):
             if not z.requires_grad:
                 z = z.clone().requires_grad_(True)
-            growth_rate = self.growth(t, z)
+            b = self.birth_rate(t, z)
 
-        diffusion_coeff = torch.sqrt(self.sigma**2 + growth_rate * self.delta**2)
+        diffusion_coeff = torch.sqrt(self.sigma**2 + b * self.delta**2)
 
         diffusion = torch.zeros_like(y)
         diffusion[:, :self.in_out_dim] = diffusion_coeff.expand(-1, self.in_out_dim)
@@ -185,6 +217,8 @@ def BranchingSDE_TimeDep(
     in_out_dim,
     sigma=0.05,
     delta=0.1,
+    alpha=0.0,
+    r0=1.0,
     # Potential network
     potential_hidden_dim=64,
     potential_n_hiddens=4,
@@ -192,19 +226,21 @@ def BranchingSDE_TimeDep(
     potential_arch="mlp",
     potential_layer_norm=False,
     potential_dropout=0.0,
-    # Growth network
-    growth_hidden_dim=64,
-    growth_n_hiddens=3,
-    growth_activation="tanh",
-    growth_arch="mlp",
-    growth_layer_norm=False,
-    growth_dropout=0.0,
+    # Activity network
+    activity_hidden_dim=64,
+    activity_n_hiddens=3,
+    activity_activation="tanh",
+    activity_arch="mlp",
+    activity_layer_norm=False,
+    activity_dropout=0.0,
 ):
-    """Backward-compatible factory: creates BranchingSDE with growth_time_dependent=True."""
+    """Backward-compatible factory: creates BranchingSDE with activity_time_dependent=True."""
     return BranchingSDE(
         in_out_dim=in_out_dim,
         sigma=sigma,
         delta=delta,
+        alpha=alpha,
+        r0=r0,
         velocity_type="potential",
         velocity_time_dependent=False,
         velocity_hidden_dim=potential_hidden_dim,
@@ -213,11 +249,11 @@ def BranchingSDE_TimeDep(
         velocity_arch=potential_arch,
         velocity_layer_norm=potential_layer_norm,
         velocity_dropout=potential_dropout,
-        growth_time_dependent=True,
-        growth_hidden_dim=growth_hidden_dim,
-        growth_n_hiddens=growth_n_hiddens,
-        growth_activation=growth_activation,
-        growth_arch=growth_arch,
-        growth_layer_norm=growth_layer_norm,
-        growth_dropout=growth_dropout,
+        activity_time_dependent=True,
+        activity_hidden_dim=activity_hidden_dim,
+        activity_n_hiddens=activity_n_hiddens,
+        activity_activation=activity_activation,
+        activity_arch=activity_arch,
+        activity_layer_norm=activity_layer_norm,
+        activity_dropout=activity_dropout,
     )

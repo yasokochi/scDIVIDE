@@ -244,14 +244,14 @@ def train_step(
     # Number of random eval points inside segments for regularizer computation
     n_eval = reg_config.get("n_eval_steps", 5)
 
-    # growth_smoothness
-    coeff = reg_config.get("growth_smoothness", 0.0)
+    # activity_smoothness
+    coeff = reg_config.get("activity_smoothness", 0.0)
     if coeff > 0:
         val = torch.tensor(0.0, device=device)
         for k in range(len(eval_xs)):
-            val = val + REG_REGISTRY["growth_smoothness"](func, eval_ts[k], eval_xs[k])
+            val = val + REG_REGISTRY["activity_smoothness"](func, eval_ts[k], eval_xs[k])
         val = val / len(eval_xs)
-        reg_losses["growth_smoothness"] = val.item()
+        reg_losses["activity_smoothness"] = val.item()
         reg_total = reg_total + coeff * val
 
     # mass_conservation
@@ -285,19 +285,19 @@ def train_step(
         reg_losses["potential_hessian"] = val.item()
         reg_total = reg_total + coeff * val
 
-    # growth_temporal_smoothness
-    coeff = reg_config.get("growth_temporal_smoothness", 0.0)
+    # activity_temporal_smoothness
+    coeff = reg_config.get("activity_temporal_smoothness", 0.0)
     if coeff > 0 and len(eval_ts) >= 2:
         val = torch.tensor(0.0, device=device)
         count = 0
         for k in range(len(eval_ts) - 1):
-            val = val + REG_REGISTRY["growth_temporal_smoothness"](
+            val = val + REG_REGISTRY["activity_temporal_smoothness"](
                 func, eval_ts[k], eval_ts[k + 1], eval_xs[k]
             )
             count += 1
         if count > 0:
             val = val / count
-        reg_losses["growth_temporal_smoothness"] = val.item()
+        reg_losses["activity_temporal_smoothness"] = val.item()
         reg_total = reg_total + coeff * val
 
     # velocity_spatial_smoothness

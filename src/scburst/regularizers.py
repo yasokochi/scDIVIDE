@@ -4,27 +4,28 @@ Regularization functions for BranchingSDE training.
 Each function takes the model (func), relevant inputs, and keyword args,
 and returns a scalar loss tensor.
 
-All functions use the unified API: func.velocity(t, x), func.growth(t, x).
+All functions use the unified API: func.velocity(t, x), func.activity(t, x),
+func.growth(t, x), func.birth_rate(t, x).
 """
 
 import torch
 
 
-def growth_spatial_smoothness(func, t, x, **kw):
-    """||nabla_x g||^2  averaged over samples.
+def activity_smoothness(func, t, x, **kw):
+    """||nabla_x beta||^2  averaged over samples.
 
-    Penalises sharp spatial variation in the growth field.
+    Penalises sharp spatial variation in the activity field.
     """
     x = x.detach().requires_grad_(True)
-    g = func.growth(t, x)
+    beta = func.activity(t, x)
 
-    grad_g = torch.autograd.grad(
-        outputs=g,
+    grad_beta = torch.autograd.grad(
+        outputs=beta,
         inputs=x,
-        grad_outputs=torch.ones_like(g),
+        grad_outputs=torch.ones_like(beta),
         create_graph=True,
     )[0]
-    return (grad_g ** 2).sum(dim=1).mean()
+    return (grad_beta ** 2).sum(dim=1).mean()
 
 
 def mass_conservation(func, t, x, lnw, **kw):
@@ -40,16 +41,17 @@ def mass_conservation(func, t, x, lnw, **kw):
 
 
 def velocity_ratio(func, t, x, target=1.0, **kw):
-    """(||v|| / sqrt(sigma^2 + g*delta^2) - target)^2  averaged over samples.
+    """(||v|| / sqrt(sigma^2 + b*delta^2) - target)^2  averaged over samples.
 
     Encourages a fixed ratio between drift and diffusion magnitudes.
+    Uses birth rate b (not net growth g) for diffusion coefficient.
     """
     x_req = x.detach().requires_grad_(True)
     v = func.velocity(t, x_req)
-    g = func.growth(t, x_req).squeeze()
+    b = func.birth_rate(t, x_req).squeeze()
 
     v_norm = torch.norm(v, dim=1)
-    diff_coeff = torch.sqrt(func.sigma ** 2 + g * func.delta ** 2)
+    diff_coeff = torch.sqrt(func.sigma ** 2 + b * func.delta ** 2)
     ratio = v_norm / (diff_coeff + 1e-10)
     return ((ratio - target) ** 2).mean()
 
@@ -85,18 +87,18 @@ def potential_hessian(func, t, x, **kw):
     return hess_norm_sq.mean()
 
 
-def growth_temporal_smoothness(func, t1, t2, x, **kw):
-    """||g(t2,x) - g(t1,x)||^2 / (t2-t1)^2  averaged over samples.
+def activity_temporal_smoothness(func, t1, t2, x, **kw):
+    """||beta(t2,x) - beta(t1,x)||^2 / (t2-t1)^2  averaged over samples.
 
-    Only meaningful when growth is time-dependent; returns 0 otherwise.
+    Only meaningful when activity is time-dependent; returns 0 otherwise.
     """
-    if not getattr(func, 'growth_time_dependent', False):
+    if not getattr(func, 'activity_time_dependent', False):
         return torch.tensor(0.0, device=x.device)
 
-    g1 = func.growth(t1, x)
-    g2 = func.growth(t2, x)
+    beta1 = func.activity(t1, x)
+    beta2 = func.activity(t2, x)
     dt = float(t2 - t1) if not isinstance(t2, float) else (t2 - t1)
-    return ((g2 - g1) ** 2).mean() / (dt ** 2 + 1e-10)
+    return ((beta2 - beta1) ** 2).mean() / (dt ** 2 + 1e-10)
 
 
 def velocity_spatial_smoothness(func, t, x, **kw):
@@ -136,11 +138,11 @@ def velocity_temporal_smoothness(func, t1, t2, x, **kw):
 
 
 REGISTRY = {
-    "growth_smoothness": growth_spatial_smoothness,
+    "activity_smoothness": activity_smoothness,
     "mass_conservation": mass_conservation,
     "velocity_ratio": velocity_ratio,
     "potential_hessian": potential_hessian,
-    "growth_temporal_smoothness": growth_temporal_smoothness,
+    "activity_temporal_smoothness": activity_temporal_smoothness,
     "velocity_spatial_smoothness": velocity_spatial_smoothness,
     "velocity_temporal_smoothness": velocity_temporal_smoothness,
 }
