@@ -105,7 +105,9 @@ diff  = func.g(t, y)    # diffusion = sqrt(σ² + b·δ²)
 | `ActivityNetwork` | x | scalar (unconstrained) | β(x) |
 | `TimeDependentActivityNetwork` | t, x | scalar (unconstrained) | β(t,x) |
 
-## Regularizers (regularizers.py)
+## Regularizers
+
+regularizers.py で定義（`REGISTRY` 経由）:
 
 | Key | Signature | Description |
 |-----|-----------|-------------|
@@ -116,6 +118,17 @@ diff  = func.g(t, y)    # diffusion = sqrt(σ² + b·δ²)
 | `activity_temporal_smoothness` | (func, t1, t2, x) | ‖β(t2)-β(t1)‖²/dt² |
 | `velocity_spatial_smoothness` | (func, t, x) | ‖∇ₓv‖²_F |
 | `velocity_temporal_smoothness` | (func, t1, t2, x) | ‖v(t2)-v(t1)‖²/dt² |
+
+train.py で定義（SDE 軌道に依存するため regularizers.py とは分離）:
+
+| Key | Description |
+|-----|-------------|
+| `action` | WFR action: `∫ (1/N) Σ_k [0.5*(‖v_k‖² + γ‖g_k‖²) * m_k] dt` |
+
+- m = exp(lnw), γ = `action_growth_coeff`
+- 粒子数 N で割る (`torch.mean`) — 粒子数非依存
+- `compute_action_on_segment(func, ts, ys, growth_coeff)` でセグメント単位に計算
+- 0 でオフ（計算スキップ）、ログは `reg_losses["action"]`
 
 ## Config YAML
 
@@ -136,8 +149,14 @@ model:
     n_hiddens: 3
 
 regularizers:
-  activity_smoothness: 0.0
-  activity_temporal_smoothness: 0.0
-  mass_conservation: 0.0
-  velocity_ratio: 0.0
+  activity_smoothness: 0.0          # ‖∇ₓβ‖²
+  activity_temporal_smoothness: 0.0 # ‖β(t2)-β(t1)‖²/dt²
+  mass_conservation: 0.0            # (E_w[g])²
+  velocity_ratio: 0.0               # (‖v‖/diffusion - target)²
+  velocity_ratio_target: 1.0        # velocity_ratio の target 値
+  potential_hessian: 0.0             # ‖∇²φ‖²_F
+  velocity_spatial_smoothness: 0.0   # ‖∇ₓv‖²_F
+  velocity_temporal_smoothness: 0.0  # ‖v(t2)-v(t1)‖²/dt²
+  action: 0.0                       # WFR action（0 = オフ）
+  action_growth_coeff: 1.0          # action 内の growth 項の重み γ
 ```

@@ -121,6 +121,33 @@ def build_scheduler(optimizer, scheduler_config, niters):
 
 
 # ---------------------------------------------------------------------------
+# WFR action loss
+# ---------------------------------------------------------------------------
+
+def compute_action_on_segment(func, ts, ys, growth_coeff=1.0):
+    """WFR action: ∫ (1/N) Σ_k [0.5*(||v_k||² + γ||g_k||²) * m_k] dt
+
+    粒子数 N で割る（非正規化測度を保持しつつ粒子数非依存）。
+    """
+    action = 0.0
+    for j in range(len(ts) - 1):
+        dt = ts[j + 1] - ts[j]
+        drift = func.f(ts[j], ys[j])
+        v = drift[:, : func.in_out_dim]
+        g = drift[:, func.in_out_dim :]
+        lnw = ys[j][:, func.in_out_dim :]
+        m = torch.exp(torch.clamp(lnw, -20, 20)).squeeze()
+        v_sq = (v ** 2).sum(dim=1)
+        g_sq = (g ** 2).squeeze()
+        # 粒子数 N で割る（torch.mean）
+        action += (
+            0.5 * torch.mean(v_sq * m)
+            + 0.5 * growth_coeff * torch.mean(g_sq * m)
+        ) * dt
+    return action
+
+
+# ---------------------------------------------------------------------------
 # Single training step
 # ---------------------------------------------------------------------------
 
@@ -152,7 +179,7 @@ def train_step(
     Returns:
         (total_loss, reg_losses_dict, sinkhorn_losses)
 
-    total_loss: scalar tensor (Sinkhorn + regularizers, **no** action).
+    total_loss: scalar tensor (Sinkhorn + regularizers + action).
     reg_losses_dict: {name: float} for logging.
     sinkhorn_losses: (n_segments,) detached tensor.
     """
@@ -185,6 +212,10 @@ def train_step(
     eval_lnws = [lnw_curr.detach()]
     eval_ts = [float(integral_time[0])]
 
+    _action_coeff = (reg_config or {}).get("action", 0.0)
+    _growth_coeff = (reg_config or {}).get("action_growth_coeff", 1.0)
+    action_loss = torch.tensor(0.0, device=device)
+
     for i in range(n_segments):
         t0 = float(integral_time[i])
         t1 = float(integral_time[i + 1])
@@ -193,6 +224,12 @@ def train_step(
         ts = torch.linspace(t0, t1, action_steps_per_segment + 1, device=device)
 
         ys = sde_solver(func, y0, ts, method="euler", dt=sde_dt)
+
+        # WFR action loss on this segment
+        if _action_coeff > 0:
+            action_loss = action_loss + compute_action_on_segment(
+                func, ts, ys, growth_coeff=_growth_coeff,
+            )
 
         y_end = ys[-1]
         z_pred = y_end[:, : func.in_out_dim]
@@ -324,6 +361,11 @@ def train_step(
             val = val / count
         reg_losses["velocity_temporal_smoothness"] = val.item()
         reg_total = reg_total + coeff * val
+
+    # WFR action
+    if _action_coeff > 0:
+        reg_losses["action"] = action_loss.item()
+        reg_total = reg_total + _action_coeff * action_loss
 
     total_loss = sink_loss_total + reg_total
     return total_loss, reg_losses, sinkhorn_losses_det
