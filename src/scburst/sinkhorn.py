@@ -7,17 +7,23 @@ Differentiable via POT's torch backend.
 import torch
 
 
-def compute_cost_scale(y):
+def compute_cost_scale(y, max_samples=5000):
     """Median pairwise squared Euclidean distance.
 
     Args:
         y: (n, d) samples.
+        max_samples: subsample to this size before computing pairwise distances
+            to avoid O(n^2) memory issues on large datasets.
 
     Returns:
         Scalar tensor (median of upper-triangular pairwise sq-distances).
     """
-    sq_dists = torch.cdist(y, y, p=2) ** 2
     n = y.shape[0]
+    if n > max_samples:
+        idx = torch.randperm(n, device=y.device)[:max_samples]
+        y = y[idx]
+        n = max_samples
+    sq_dists = torch.cdist(y, y, p=2) ** 2
     triu_indices = torch.triu_indices(n, n, offset=1, device=y.device)
     pairwise_dists = sq_dists[triu_indices[0], triu_indices[1]]
     return torch.median(pairwise_dists)

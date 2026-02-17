@@ -1,15 +1,14 @@
 """
 BranchingSDE model with growth-dependent diffusion.
 
-PDE:  d rho/dt = -div(v rho) + (sigma^2 + b delta^2)/2 * Laplacian(rho) + g rho
-SDE:  dz = v(z) dt + sqrt(sigma^2 + b delta^2) dW
+PDE:  d rho/dt = -div(v rho) + (sigma^2 + 2*b*delta^2)/2 * Laplacian(rho) + g rho
+SDE:  dz = v(z) dt + sqrt(sigma^2 + 2*b*delta^2) dW
       d(lnw) = g dt
 
 (beta, alpha) parametrization:
   beta(x) = NN output (unconstrained)
-  b(x) = r0 * exp(beta(x))       (birth rate)
-  d(x) = r0 * exp(beta(x)) * alpha  (death rate)
-  g(x) = r0 * exp(beta(x)) * (1 - alpha)  (net growth)
+  b(x) = r0 * softplus(beta(x))              (birth rate)
+  g(x) = r0 * softplus(beta(x)) * (1 - alpha)  (net growth)
 
 Supports configurable velocity type (potential / free-form) and
 time dependence for both velocity and activity networks.
@@ -17,6 +16,7 @@ time dependence for both velocity and activity networks.
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 from .networks import (
     PotentialNetwork,
@@ -38,17 +38,16 @@ class BranchingSDE(nn.Module):
 
     Parametrization:
         beta(x) = NN output (unconstrained)
-        b(x) = r0 * exp(beta(x))         (birth rate)
-        d(x) = r0 * exp(beta(x)) * alpha (death rate)
-        g(x) = r0 * exp(beta(x)) * (1 - alpha) (net growth)
-        diffusion = sqrt(sigma^2 + b * delta^2)
+        b(x) = r0 * softplus(beta(x))              (birth rate)
+        g(x) = r0 * softplus(beta(x)) * (1 - alpha)  (net growth)
+        diffusion = sqrt(sigma^2 + 2 * b * delta^2)
 
     Args:
         velocity_type: "potential" (v = -nabla phi) or "free" (v = MLP output).
         velocity_time_dependent: If True, velocity depends on (t, x).
         activity_time_dependent: If True, activity beta depends on (t, x).
-        alpha: Death-to-birth ratio in [0, 1]. Default 0.0 (pure proliferation).
-        r0: Baseline activity scale. Default 1.0.
+        alpha: Relative death fraction in [0, 1]. Default 0.0 (pure proliferation).
+        r0: Baseline turnover scale. Default 1.0.
     """
 
     sde_type = "ito"
@@ -158,16 +157,16 @@ class BranchingSDE(nn.Module):
             return self.activity_net(z)
 
     def birth_rate(self, t, z):
-        """b(t, z) = r0 * exp(beta(t, z))."""
+        """b(t,z) = r0 * softplus(beta). Birth rate."""
         beta = self.activity(t, z)
-        return self.r0 * torch.exp(beta)
+        return self.r0 * F.softplus(beta)
 
     def death_rate(self, t, z):
-        """d(t, z) = r0 * exp(beta(t, z)) * alpha."""
+        """d(t,z) = alpha * b(t,z). Death rate."""
         return self.birth_rate(t, z) * self.alpha
 
     def growth(self, t, z):
-        """g(t, z) = r0 * exp(beta(t, z)) * (1 - alpha)."""
+        """g(t, z) = r0 * softplus(beta(t, z)) * (1 - alpha)."""
         return self.birth_rate(t, z) * (1 - self.alpha)
 
     def potential(self, t, z):
@@ -198,7 +197,7 @@ class BranchingSDE(nn.Module):
         return torch.cat([v, g_val], dim=1)
 
     def g(self, t, y):
-        """Diffusion for torchsde. sqrt(sigma^2 + b*delta^2) for z, 0 for lnw."""
+        """Diffusion for torchsde. sqrt(sigma^2 + 2*b*delta^2) for z, 0 for lnw."""
         z = y[:, :self.in_out_dim]
 
         with torch.set_grad_enabled(True):
@@ -206,7 +205,7 @@ class BranchingSDE(nn.Module):
                 z = z.clone().requires_grad_(True)
             b = self.birth_rate(t, z)
 
-        diffusion_coeff = torch.sqrt(self.sigma**2 + b * self.delta**2)
+        diffusion_coeff = torch.sqrt(self.sigma**2 + 2 * b * self.delta**2)
 
         diffusion = torch.zeros_like(y)
         diffusion[:, :self.in_out_dim] = diffusion_coeff.expand(-1, self.in_out_dim)

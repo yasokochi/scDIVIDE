@@ -41,7 +41,7 @@ def mass_conservation(func, t, x, lnw, **kw):
 
 
 def velocity_ratio(func, t, x, target=1.0, **kw):
-    """(||v|| / sqrt(sigma^2 + b*delta^2) - target)^2  averaged over samples.
+    """(||v|| / sqrt(sigma^2 + 2*b*delta^2) - target)^2  averaged over samples.
 
     Encourages a fixed ratio between drift and diffusion magnitudes.
     Uses birth rate b (not net growth g) for diffusion coefficient.
@@ -51,7 +51,7 @@ def velocity_ratio(func, t, x, target=1.0, **kw):
     b = func.birth_rate(t, x_req).squeeze()
 
     v_norm = torch.norm(v, dim=1)
-    diff_coeff = torch.sqrt(func.sigma ** 2 + b * func.delta ** 2)
+    diff_coeff = torch.sqrt(func.sigma ** 2 + 2 * b * func.delta ** 2)
     ratio = v_norm / (diff_coeff + 1e-10)
     return ((ratio - target) ** 2).mean()
 
