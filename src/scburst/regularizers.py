@@ -15,7 +15,11 @@ def activity_smoothness(func, t, x, **kw):
     """||nabla_x beta||^2  averaged over samples.
 
     Penalises sharp spatial variation in the activity field.
+    Returns 0 if the model has no activity() method (e.g. DecoupledSDE).
     """
+    if not callable(getattr(func, 'activity', None)):
+        return torch.tensor(0.0, device=x.device)
+
     x = x.detach().requires_grad_(True)
     beta = func.activity(t, x)
 
@@ -41,17 +45,17 @@ def mass_conservation(func, t, x, lnw, **kw):
 
 
 def velocity_ratio(func, t, x, target=1.0, **kw):
-    """(||v|| / sqrt(sigma^2 + 2*b*delta^2) - target)^2  averaged over samples.
+    """(||v|| / diffusion_coeff - target)^2  averaged over samples.
 
     Encourages a fixed ratio between drift and diffusion magnitudes.
-    Uses birth rate b (not net growth g) for diffusion coefficient.
+    Uses func.diffusion_coeff() for compatibility with both BranchingSDE
+    and DecoupledSDE.
     """
     x_req = x.detach().requires_grad_(True)
     v = func.velocity(t, x_req)
-    b = func.birth_rate(t, x_req).squeeze()
+    diff_coeff = func.diffusion_coeff(t, x_req).squeeze()
 
     v_norm = torch.norm(v, dim=1)
-    diff_coeff = torch.sqrt(func.sigma ** 2 + 2 * b * func.delta ** 2)
     ratio = v_norm / (diff_coeff + 1e-10)
     return ((ratio - target) ** 2).mean()
 
@@ -91,8 +95,11 @@ def activity_temporal_smoothness(func, t1, t2, x, **kw):
     """||beta(t2,x) - beta(t1,x)||^2 / (t2-t1)^2  averaged over samples.
 
     Only meaningful when activity is time-dependent; returns 0 otherwise.
+    Returns 0 if the model has no activity() method (e.g. DecoupledSDE).
     """
     if not getattr(func, 'activity_time_dependent', False):
+        return torch.tensor(0.0, device=x.device)
+    if not callable(getattr(func, 'activity', None)):
         return torch.tensor(0.0, device=x.device)
 
     beta1 = func.activity(t1, x)

@@ -169,6 +169,11 @@ class BranchingSDE(nn.Module):
         """g(t, z) = r0 * softplus(beta(t, z)) * (1 - alpha)."""
         return self.birth_rate(t, z) * (1 - self.alpha)
 
+    def diffusion_coeff(self, t, z):
+        """sqrt(sigma^2 + 2*b*delta^2) — diffusion coefficient."""
+        b = self.birth_rate(t, z)
+        return torch.sqrt(self.sigma**2 + 2 * b * self.delta**2)
+
     def potential(self, t, z):
         """phi(t, z) — only available for velocity_type='potential'."""
         if not self.has_potential:

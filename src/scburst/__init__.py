@@ -3,6 +3,7 @@ scBURST — growth-dependent diffusion SDE for unbalanced optimal transport.
 """
 
 from .model import BranchingSDE, BranchingSDE_TimeDep
+from .model_decoupled import DecoupledSDE
 from .networks import (
     PotentialNetwork,
     TimeDependentPotentialNetwork,
@@ -27,6 +28,7 @@ from .train import (
 __all__ = [
     "BranchingSDE",
     "BranchingSDE_TimeDep",
+    "DecoupledSDE",
     "PotentialNetwork",
     "TimeDependentPotentialNetwork",
     "VelocityNetwork",
