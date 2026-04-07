@@ -58,11 +58,13 @@ results = train_loop(
     integral_time=integral_time,
     device=device,
     train_config={"niters": 500, "num_samples": 400},
-    optimizer_config={"lr": 0.01},
+    optimizer_config={"lr": 1e-3},
 )
 ```
 
 Only `train_config` is required. SDE, Sinkhorn, optimizer, scheduler, regularizer, and output configs are all optional and fall back to sensible defaults. See the docs for the full list of options.
+
+> Note: the built-in defaults are tuned for the **mouse hematopoiesis** dataset. For the three-gene dataset, please use the hyperparameters reported in the manuscript.
 
 > For a complete runnable example, see [examples](examples/).
 

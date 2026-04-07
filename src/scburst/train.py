@@ -16,7 +16,6 @@ import torch
 import torchsde
 
 from .sinkhorn import compute_cost_scale, sinkhorn_divergence
-from .regularizers import REGISTRY as REG_REGISTRY
 
 
 # ---------------------------------------------------------------------------
@@ -62,7 +61,7 @@ def build_optimizer(func, optimizer_config):
     Supported types: adam, adamw, rmsprop, sgd, radam, nadam.
     """
     opt_type = optimizer_config.get("type", "adam").lower()
-    lr = optimizer_config.get("lr", 0.01)
+    lr = optimizer_config.get("lr", 1e-3)
     wd = optimizer_config.get("weight_decay", 0.0)
 
     if opt_type == "rmsprop":
@@ -85,11 +84,11 @@ def build_scheduler(optimizer, scheduler_config, niters):
 
     Supported types: cosine, step, exponential, plateau, warmup_cosine, none/null.
     """
-    sched_type = (scheduler_config.get("type") or "none").lower()
+    sched_type = (scheduler_config.get("type") or "cosine").lower()
 
     if sched_type == "cosine":
         T_max = scheduler_config.get("T_max") or niters
-        eta_min = scheduler_config.get("eta_min", 0.0)
+        eta_min = scheduler_config.get("eta_min", 1e-5)
         return torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=T_max, eta_min=eta_min)
     elif sched_type == "step":
         step_size = scheduler_config.get("step_size", 100)
@@ -207,12 +206,7 @@ def train_step(
 
     sde_solver = torchsde.sdeint_adjoint if adjoint else torchsde.sdeint
 
-    # Collect x/lnw at evaluation points for regularizers
-    eval_xs = [x_curr.detach()]
-    eval_lnws = [lnw_curr.detach()]
-    eval_ts = [float(integral_time[0])]
-
-    _action_coeff = (reg_config or {}).get("action", 0.0)
+    _action_coeff = (reg_config or {}).get("action", 1.0)
     _growth_coeff = (reg_config or {}).get("action_growth_coeff", 1.0)
     action_loss = torch.tensor(0.0, device=device)
 
@@ -269,100 +263,9 @@ def train_step(
         x_curr = z_pred
         lnw_curr = lnw_pred
 
-        eval_xs.append(z_pred.detach())
-        eval_lnws.append(lnw_pred.detach())
-        eval_ts.append(t1)
-
-    # --- Regularizers ---
-    reg_config = reg_config or {}
+    # --- WFR action regularizer ---
     reg_losses = {}
     reg_total = torch.tensor(0.0, device=device)
-
-    # Number of random eval points inside segments for regularizer computation
-    n_eval = reg_config.get("n_eval_steps", 5)
-
-    # activity_smoothness
-    coeff = reg_config.get("activity_smoothness", 0.0)
-    if coeff > 0:
-        val = torch.tensor(0.0, device=device)
-        for k in range(len(eval_xs)):
-            val = val + REG_REGISTRY["activity_smoothness"](func, eval_ts[k], eval_xs[k])
-        val = val / len(eval_xs)
-        reg_losses["activity_smoothness"] = val.item()
-        reg_total = reg_total + coeff * val
-
-    # mass_conservation
-    coeff = reg_config.get("mass_conservation", 0.0)
-    if coeff > 0:
-        val = torch.tensor(0.0, device=device)
-        for k in range(len(eval_xs)):
-            val = val + REG_REGISTRY["mass_conservation"](func, eval_ts[k], eval_xs[k], eval_lnws[k])
-        val = val / len(eval_xs)
-        reg_losses["mass_conservation"] = val.item()
-        reg_total = reg_total + coeff * val
-
-    # velocity_ratio
-    coeff = reg_config.get("velocity_ratio", 0.0)
-    if coeff > 0:
-        target_ratio = reg_config.get("velocity_ratio_target", 1.0)
-        val = torch.tensor(0.0, device=device)
-        for k in range(len(eval_xs)):
-            val = val + REG_REGISTRY["velocity_ratio"](func, eval_ts[k], eval_xs[k], target=target_ratio)
-        val = val / len(eval_xs)
-        reg_losses["velocity_ratio"] = val.item()
-        reg_total = reg_total + coeff * val
-
-    # potential_hessian
-    coeff = reg_config.get("potential_hessian", 0.0)
-    if coeff > 0:
-        val = torch.tensor(0.0, device=device)
-        for k in range(len(eval_xs)):
-            val = val + REG_REGISTRY["potential_hessian"](func, eval_ts[k], eval_xs[k])
-        val = val / len(eval_xs)
-        reg_losses["potential_hessian"] = val.item()
-        reg_total = reg_total + coeff * val
-
-    # activity_temporal_smoothness
-    coeff = reg_config.get("activity_temporal_smoothness", 0.0)
-    if coeff > 0 and len(eval_ts) >= 2:
-        val = torch.tensor(0.0, device=device)
-        count = 0
-        for k in range(len(eval_ts) - 1):
-            val = val + REG_REGISTRY["activity_temporal_smoothness"](
-                func, eval_ts[k], eval_ts[k + 1], eval_xs[k]
-            )
-            count += 1
-        if count > 0:
-            val = val / count
-        reg_losses["activity_temporal_smoothness"] = val.item()
-        reg_total = reg_total + coeff * val
-
-    # velocity_spatial_smoothness
-    coeff = reg_config.get("velocity_spatial_smoothness", 0.0)
-    if coeff > 0:
-        val = torch.tensor(0.0, device=device)
-        for k in range(len(eval_xs)):
-            val = val + REG_REGISTRY["velocity_spatial_smoothness"](func, eval_ts[k], eval_xs[k])
-        val = val / len(eval_xs)
-        reg_losses["velocity_spatial_smoothness"] = val.item()
-        reg_total = reg_total + coeff * val
-
-    # velocity_temporal_smoothness
-    coeff = reg_config.get("velocity_temporal_smoothness", 0.0)
-    if coeff > 0 and len(eval_ts) >= 2:
-        val = torch.tensor(0.0, device=device)
-        count = 0
-        for k in range(len(eval_ts) - 1):
-            val = val + REG_REGISTRY["velocity_temporal_smoothness"](
-                func, eval_ts[k], eval_ts[k + 1], eval_xs[k]
-            )
-            count += 1
-        if count > 0:
-            val = val / count
-        reg_losses["velocity_temporal_smoothness"] = val.item()
-        reg_total = reg_total + coeff * val
-
-    # WFR action
     if _action_coeff > 0:
         reg_losses["action"] = action_loss.item()
         reg_total = reg_total + _action_coeff * action_loss
