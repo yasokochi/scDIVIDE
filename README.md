@@ -28,7 +28,7 @@ pip install -e .
 Install the required packages before running `scBURST`:
 
 ```bash
-pip install torch torchsde pot
+pip install torch torchsde POT
 ```
 
 `scBURST` uses:
@@ -49,8 +49,7 @@ func = BranchingSDE(
     sigma=0.05,
     delta=0.1,
     alpha=0.5,
-    r0=1.0,
-)
+).to(device)
 
 results = train_loop(
     func=func,
@@ -58,15 +57,12 @@ results = train_loop(
     train_time=train_time,
     integral_time=integral_time,
     device=device,
-    train_config=train_config,
-    sde_config=sde_config,
-    sinkhorn_config=sinkhorn_config,
-    optimizer_config=optimizer_config,
-    scheduler_config=scheduler_config,
-    reg_config=reg_config,
-    output_config=output_config,
+    train_config={"niters": 500, "num_samples": 400},
+    optimizer_config={"lr": 0.01},
 )
 ```
+
+Only `train_config` is required. SDE, Sinkhorn, optimizer, scheduler, regularizer, and output configs are all optional and fall back to sensible defaults. See the docs for the full list of options.
 
 > For a complete runnable example, see [examples](examples/).
 

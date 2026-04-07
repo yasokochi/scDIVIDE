@@ -383,10 +383,10 @@ def train_loop(
     device,
     # Config dicts
     train_config,
-    sde_config,
-    sinkhorn_config,
-    optimizer_config,
-    scheduler_config,
+    sde_config=None,
+    sinkhorn_config=None,
+    optimizer_config=None,
+    scheduler_config=None,
     reg_config=None,
     output_config=None,
 ):
@@ -409,6 +409,10 @@ def train_loop(
     Returns:
         dict with keys: func, loss_history, final_loss.
     """
+    sde_config = sde_config or {}
+    sinkhorn_config = sinkhorn_config or {}
+    optimizer_config = optimizer_config or {}
+    scheduler_config = scheduler_config or {}
     output_config = output_config or {}
     reg_config = reg_config or {}
     verbose = output_config.get("verbose", True)
