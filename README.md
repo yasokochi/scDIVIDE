@@ -62,7 +62,7 @@ results = train_loop(
 )
 ```
 
-Only `train_config` is required. SDE, Sinkhorn, optimizer, scheduler, regularizer, and output configs are all optional and fall back to sensible defaults. See the docs for the full list of options.
+Only `train_config` is required. SDE, Sinkhorn, optimizer, scheduler, regularizer, and output configs are all optional and fall back to sensible defaults. See [`docs/configs.md`](docs/configs.md) for the full list of options.
 
 > Note: the built-in defaults are tuned for the **mouse hematopoiesis** dataset. For the three-gene dataset, please use the hyperparameters reported in the manuscript.
 
