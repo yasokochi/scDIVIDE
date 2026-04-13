@@ -1,5 +1,5 @@
 """
-scBURST — growth-dependent diffusion SDE for unbalanced optimal transport.
+scDIVIDE — growth-dependent diffusion SDE for unbalanced optimal transport.
 """
 
 from .model import BranchingSDE, BranchingSDE_TimeDep

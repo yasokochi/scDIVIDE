@@ -1,4 +1,4 @@
-## scBURST
+## scDIVIDE
 
 Growth-dependent diffusion SDE for unbalanced optimal transport.
 
@@ -42,8 +42,8 @@ This recovers non-negative growth with exp instead of softplus.
 ## Directory Structure
 
 ```
-scBURST/
-└── src/scburst/
+scDIVIDE/
+└── src/scdivide/
     ├── model.py          # BranchingSDE (unified model)
     ├── networks.py       # NN definitions (Potential, Velocity, Activity)
     ├── regularizers.py   # Regularization functions + REGISTRY
@@ -52,9 +52,9 @@ scBURST/
 ```
 
 Experiment files are in parent `TIGON/`:
-- `scBURST_dev/configs/` — YAML config files
-- `scBURST_dev/scripts/` — experiment scripts
-- `scBURST_dev/results/` — outputs
+- `scDIVIDE_dev/configs/` — YAML config files
+- `scDIVIDE_dev/scripts/` — experiment scripts
+- `scDIVIDE_dev/results/` — outputs
 
 ## BranchingSDE — Unified Model
 
@@ -69,7 +69,7 @@ Constructor flags control model variants:
 | `r0` | float > 0 | Baseline activity scale |
 
 ```python
-from scburst import BranchingSDE
+from scdivide import BranchingSDE
 
 func = BranchingSDE(
     in_out_dim=2, sigma=0.05, delta=0.1,

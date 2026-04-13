@@ -1,4 +1,4 @@
-# scBURST Config Reference
+# scDIVIDE Config Reference
 
 `train_loop` accepts several config dicts. Only `train_config` is required; the
 rest fall back to the defaults shown below. The defaults are tuned for the
@@ -6,7 +6,7 @@ rest fall back to the defaults shown below. The defaults are tuned for the
 hyperparameters reported in the manuscript.
 
 ```python
-from scburst import BranchingSDE, train_loop
+from scdivide import BranchingSDE, train_loop
 
 func = BranchingSDE(in_out_dim=3, sigma=0.05, delta=0.1, alpha=0.5).to(device)
 
