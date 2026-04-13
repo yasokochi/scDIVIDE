@@ -13,7 +13,6 @@ func = NeuralSDE(in_out_dim=3, sigma=0.05, delta=0.1, alpha=0.5).to(device)
 results = train_loop(
     func=func,
     data_train=data_train,
-    train_time=train_time,
     integral_time=integral_time,
     device=device,
     train_config=train_config,

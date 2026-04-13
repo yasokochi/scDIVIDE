@@ -54,7 +54,6 @@ func = NeuralSDE(
 results = train_loop(
     func=func,
     data_train=data_train,
-    train_time=train_time,
     integral_time=integral_time,
     device=device,
     train_config={"niters": 500, "num_samples": 400},
@@ -63,6 +62,8 @@ results = train_loop(
 ```
 
 Only `train_config` is required. SDE, Sinkhorn, optimizer, scheduler, regularizer, and output configs are all optional and fall back to sensible defaults. See [`docs/configs.md`](docs/configs.md) for the full list of options.
+
+> **Important:** scDIVIDE uses Sinkhorn divergence as the fitting loss. Make sure the Sinkhorn iterations converge by checking the loss curve and adjusting `sinkhorn_config` (e.g., `epsilon`, `n_iter`) if needed.
 
 > Note: the built-in defaults are tuned for the **mouse hematopoiesis** dataset. For the three-gene dataset, please use the hyperparameters reported in the manuscript.
 

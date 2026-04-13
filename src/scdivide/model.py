@@ -66,7 +66,6 @@ class NeuralSDE(nn.Module):
         velocity_hidden_dim=64,
         velocity_n_hiddens=4,
         velocity_activation="tanh",
-        velocity_arch="mlp",
         velocity_layer_norm=False,
         velocity_dropout=0.0,
         # Activity config
@@ -74,7 +73,6 @@ class NeuralSDE(nn.Module):
         activity_hidden_dim=64,
         activity_n_hiddens=3,
         activity_activation="tanh",
-        activity_arch="mlp",
         activity_layer_norm=False,
         activity_dropout=0.0,
     ):
@@ -97,7 +95,6 @@ class NeuralSDE(nn.Module):
             hidden_dim=velocity_hidden_dim,
             n_hiddens=velocity_n_hiddens,
             activation=velocity_activation,
-            arch=velocity_arch,
             use_layer_norm=velocity_layer_norm,
             dropout=velocity_dropout,
         )
@@ -123,7 +120,6 @@ class NeuralSDE(nn.Module):
             hidden_dim=activity_hidden_dim,
             n_hiddens=activity_n_hiddens,
             activation=activity_activation,
-            arch=activity_arch,
             use_layer_norm=activity_layer_norm,
             dropout=activity_dropout,
         )

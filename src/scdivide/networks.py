@@ -1,13 +1,12 @@
 """
 Tunable neural network architectures for NeuralSDE.
 
-Supports MLP and ResNet (residual block) architectures with configurable
-activation, layer normalization, dropout, and weight initialization.
+Supports MLP with configurable activation, layer normalization,
+dropout, and weight initialization.
 """
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
 
 ACTIVATIONS = {
@@ -31,32 +30,6 @@ def _get_activation(name: str) -> nn.Module:
 # ---------------------------------------------------------------------------
 # Building blocks
 # ---------------------------------------------------------------------------
-
-class ResBlock(nn.Module):
-    """Residual block: identity + 2-layer MLP (VarRUOT style)."""
-
-    def __init__(self, dim, activation="gelu", use_layer_norm=True):
-        super().__init__()
-        self.fc1 = nn.Linear(dim, dim)
-        self.fc2 = nn.Linear(dim, dim)
-        self.activation = _get_activation(activation)
-        self.use_layer_norm = use_layer_norm
-        if use_layer_norm:
-            self.norm1 = nn.LayerNorm(dim)
-            self.norm2 = nn.LayerNorm(dim)
-
-    def forward(self, x):
-        identity = x
-        out = self.fc1(x)
-        if self.use_layer_norm:
-            out = self.norm1(out)
-        out = self.activation(out)
-        out = self.fc2(out)
-        if self.use_layer_norm:
-            out = self.norm2(out)
-        out = self.activation(out)
-        return identity + out
-
 
 class MLP(nn.Module):
     """Plain MLP: Linear -> Act -> ... -> Linear."""
@@ -84,29 +57,6 @@ class MLP(nn.Module):
         return self.net(x)
 
 
-class ResNet(nn.Module):
-    """ResBlock-based network: Linear -> ResBlocks -> Linear."""
-
-    def __init__(self, in_dim, out_dim, hidden_dim=256, n_blocks=2,
-                 activation="gelu", use_layer_norm=True, dropout=0.0):
-        super().__init__()
-        self.input_layer = nn.Linear(in_dim, hidden_dim)
-        self.activation = _get_activation(activation)
-        self.res_blocks = nn.Sequential(
-            *[ResBlock(hidden_dim, activation=activation, use_layer_norm=use_layer_norm)
-              for _ in range(n_blocks)]
-        )
-        self.output_layer = nn.Linear(hidden_dim, out_dim)
-        self.dropout = nn.Dropout(dropout) if dropout > 0 else None
-
-    def forward(self, x):
-        h = self.activation(self.input_layer(x))
-        if self.dropout is not None:
-            h = self.dropout(h)
-        h = self.res_blocks(h)
-        return self.output_layer(h)
-
-
 # ---------------------------------------------------------------------------
 # Network classes for the SDE model
 # ---------------------------------------------------------------------------
@@ -115,20 +65,14 @@ class PotentialNetwork(nn.Module):
     """phi(x) -> scalar. gradient() returns nabla phi(x)."""
 
     def __init__(self, in_dim, hidden_dim=64, n_hiddens=4,
-                 activation="tanh", arch="mlp",
+                 activation="tanh",
                  use_layer_norm=False, dropout=0.0):
         super().__init__()
         self.in_dim = in_dim
-        if arch == "resnet":
-            self.net = ResNet(in_dim, 1, hidden_dim, n_hiddens,
-                              activation=activation,
-                              use_layer_norm=use_layer_norm,
-                              dropout=dropout)
-        else:
-            self.net = MLP(in_dim, 1, hidden_dim, n_hiddens,
-                           activation=activation,
-                           use_layer_norm=use_layer_norm,
-                           dropout=dropout)
+        self.net = MLP(in_dim, 1, hidden_dim, n_hiddens,
+                       activation=activation,
+                       use_layer_norm=use_layer_norm,
+                       dropout=dropout)
 
     def forward(self, x):
         return self.net(x)
@@ -152,19 +96,13 @@ class ActivityNetwork(nn.Module):
     """beta(x) -> scalar (unconstrained, no activation on output)."""
 
     def __init__(self, in_dim, hidden_dim=64, n_hiddens=3,
-                 activation="tanh", arch="mlp",
+                 activation="tanh",
                  use_layer_norm=False, dropout=0.0):
         super().__init__()
-        if arch == "resnet":
-            self.net = ResNet(in_dim, 1, hidden_dim, n_hiddens,
-                              activation=activation,
-                              use_layer_norm=use_layer_norm,
-                              dropout=dropout)
-        else:
-            self.net = MLP(in_dim, 1, hidden_dim, n_hiddens,
-                           activation=activation,
-                           use_layer_norm=use_layer_norm,
-                           dropout=dropout)
+        self.net = MLP(in_dim, 1, hidden_dim, n_hiddens,
+                       activation=activation,
+                       use_layer_norm=use_layer_norm,
+                       dropout=dropout)
 
     def forward(self, x):
         return self.net(x)
@@ -174,20 +112,14 @@ class TimeDependentActivityNetwork(nn.Module):
     """beta(t, x) -> scalar (unconstrained, no activation on output)."""
 
     def __init__(self, in_dim, hidden_dim=64, n_hiddens=3,
-                 activation="tanh", arch="mlp",
+                 activation="tanh",
                  use_layer_norm=False, dropout=0.0):
         super().__init__()
         self.in_dim = in_dim
-        if arch == "resnet":
-            self.net = ResNet(in_dim + 1, 1, hidden_dim, n_hiddens,
-                              activation=activation,
-                              use_layer_norm=use_layer_norm,
-                              dropout=dropout)
-        else:
-            self.net = MLP(in_dim + 1, 1, hidden_dim, n_hiddens,
-                           activation=activation,
-                           use_layer_norm=use_layer_norm,
-                           dropout=dropout)
+        self.net = MLP(in_dim + 1, 1, hidden_dim, n_hiddens,
+                       activation=activation,
+                       use_layer_norm=use_layer_norm,
+                       dropout=dropout)
 
     def forward(self, t, x):
         t_tensor = _broadcast_t(t, x)
@@ -209,20 +141,14 @@ class TimeDependentPotentialNetwork(nn.Module):
     """phi(t, x) -> scalar. gradient(t, x) returns nabla_x phi(t, x)."""
 
     def __init__(self, in_dim, hidden_dim=64, n_hiddens=4,
-                 activation="tanh", arch="mlp",
+                 activation="tanh",
                  use_layer_norm=False, dropout=0.0):
         super().__init__()
         self.in_dim = in_dim
-        if arch == "resnet":
-            self.net = ResNet(in_dim + 1, 1, hidden_dim, n_hiddens,
-                              activation=activation,
-                              use_layer_norm=use_layer_norm,
-                              dropout=dropout)
-        else:
-            self.net = MLP(in_dim + 1, 1, hidden_dim, n_hiddens,
-                           activation=activation,
-                           use_layer_norm=use_layer_norm,
-                           dropout=dropout)
+        self.net = MLP(in_dim + 1, 1, hidden_dim, n_hiddens,
+                       activation=activation,
+                       use_layer_norm=use_layer_norm,
+                       dropout=dropout)
 
     def forward(self, t, x):
         t_tensor = _broadcast_t(t, x)
@@ -248,19 +174,13 @@ class VelocityNetwork(nn.Module):
     """v(x) -> d-dim vector (free-form MLP)."""
 
     def __init__(self, in_dim, hidden_dim=64, n_hiddens=4,
-                 activation="tanh", arch="mlp",
+                 activation="tanh",
                  use_layer_norm=False, dropout=0.0):
         super().__init__()
-        if arch == "resnet":
-            self.net = ResNet(in_dim, in_dim, hidden_dim, n_hiddens,
-                              activation=activation,
-                              use_layer_norm=use_layer_norm,
-                              dropout=dropout)
-        else:
-            self.net = MLP(in_dim, in_dim, hidden_dim, n_hiddens,
-                           activation=activation,
-                           use_layer_norm=use_layer_norm,
-                           dropout=dropout)
+        self.net = MLP(in_dim, in_dim, hidden_dim, n_hiddens,
+                       activation=activation,
+                       use_layer_norm=use_layer_norm,
+                       dropout=dropout)
 
     def forward(self, x):
         return self.net(x)
@@ -270,20 +190,14 @@ class TimeDependentVelocityNetwork(nn.Module):
     """v(t, x) -> d-dim vector (free-form MLP)."""
 
     def __init__(self, in_dim, hidden_dim=64, n_hiddens=4,
-                 activation="tanh", arch="mlp",
+                 activation="tanh",
                  use_layer_norm=False, dropout=0.0):
         super().__init__()
         self.in_dim = in_dim
-        if arch == "resnet":
-            self.net = ResNet(in_dim + 1, in_dim, hidden_dim, n_hiddens,
-                              activation=activation,
-                              use_layer_norm=use_layer_norm,
-                              dropout=dropout)
-        else:
-            self.net = MLP(in_dim + 1, in_dim, hidden_dim, n_hiddens,
-                           activation=activation,
-                           use_layer_norm=use_layer_norm,
-                           dropout=dropout)
+        self.net = MLP(in_dim + 1, in_dim, hidden_dim, n_hiddens,
+                       activation=activation,
+                       use_layer_norm=use_layer_norm,
+                       dropout=dropout)
 
     def forward(self, t, x):
         t_tensor = _broadcast_t(t, x)

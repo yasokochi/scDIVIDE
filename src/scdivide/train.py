@@ -154,7 +154,6 @@ def train_step(
     func,
     num_samples,
     data_train,
-    train_time,
     integral_time,
     device,
     itr,
@@ -182,7 +181,7 @@ def train_step(
     reg_losses_dict: {name: float} for logging.
     sinkhorn_losses: (n_segments,) detached tensor.
     """
-    n_segments = len(train_time) - 1
+    n_segments = len(integral_time) - 1
     sinkhorn_losses_det = torch.zeros(n_segments, device=device)
     sink_loss_total = torch.tensor(0.0, device=device)
 
@@ -281,7 +280,6 @@ def train_step(
 def train_loop(
     func,
     data_train,
-    train_time,
     integral_time,
     device,
     # Config dicts
@@ -296,10 +294,9 @@ def train_loop(
     """Full training loop.
 
     Args:
-        func: NeuralSDE or NeuralSDE_TimeDep model (already on device).
+        func: NeuralSDE model (already on device).
         data_train: list of tensors per training timepoint.
-        train_time: list of int indices [0, 1, ...].
-        integral_time: list of float times.
+        integral_time: list of float times (must have same length as data_train).
         device: torch device.
         train_config: dict with niters, num_samples, gradient_clip, gradient_clip_type.
         sde_config: dict with sigma, delta, dt, adjoint.
@@ -342,7 +339,6 @@ def train_loop(
             func=func,
             num_samples=num_samples,
             data_train=data_train,
-            train_time=train_time,
             integral_time=integral_time,
             device=device,
             itr=itr,
