@@ -6,24 +6,7 @@ scDIVIDE models developmental trajectories with growth-dependent diffusion stoch
 
 ---
 
-## 1. Install scDIVIDE
-
-GitHub repository: `scDIVIDE`
-
-Clone the repository and install it in editable/development mode:
-
-```bash
-git clone <your-github-url>/scDIVIDE.git
-cd scDIVIDE
-pip install -e .
-```
-
-> Important: `scDIVIDE` is built on **[PyTorch](https://pytorch.org/)**, **[torchsde](https://github.com/google-research/torchsde)**, and **[POT](https://pythonot.github.io/)**.
-> Install `torch`, `torchsde`, and `pot` yourself first for your environment before installing or running `scDIVIDE`.
-
----
-
-## 2. Install dependencies first
+## 1. Install dependencies first
 
 Install the required packages before running `scDIVIDE`:
 
@@ -32,9 +15,21 @@ pip install torch torchsde POT
 ```
 
 `scDIVIDE` uses:
-- `torch` for neural network training
-- `torchsde` for stochastic differential equation integration
-- `pot` for optimal transport computations
+- [`torch`](https://pytorch.org/) for neural network training
+- [`torchsde`](https://github.com/google-research/torchsde) for stochastic differential equation integration
+- [`pot`](https://pythonot.github.io/) for optimal transport computations
+
+---
+
+## 2. Install scDIVIDE
+
+You can install `scDIVIDE` from GitHub directory via `pip`.
+
+```bash
+pip install git+https://github.com/yasokochi/scDIVIDE.git
+```
+
+> Important: `
 
 ---
 
@@ -96,7 +91,7 @@ These values are rough references derived from the supplementary benchmark by sc
 
 | Item | Value |
 |------|-------|
-| Core framework | [PyTorch]((https://pytorch.org/)) |
+| Core framework | [PyTorch](https://pytorch.org/) |
 | SDE solver | [torchsde](https://github.com/google-research/torchsde) |
 | OT library | [POT](https://pythonot.github.io/) |
 | Example | `examples/three_gene_alpha05.ipynb` |
