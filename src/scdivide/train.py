@@ -124,9 +124,9 @@ def build_scheduler(optimizer, scheduler_config, niters):
 # ---------------------------------------------------------------------------
 
 def compute_action_on_segment(func, ts, ys, growth_coeff=1.0):
-    """WFR action: ∫ (1/N) Σ_k [0.5*(||v_k||² + γ||g_k||²) * m_k] dt
-
-    粒子数 N で割る（非正規化測度を保持しつつ粒子数非依存）。
+    """
+    
+    WFR action: ∫ (1/N) Σ_k [0.5*(||v_k||² + γ||g_k||²) * m_k] dt
     """
     action = 0.0
     for j in range(len(ts) - 1):
