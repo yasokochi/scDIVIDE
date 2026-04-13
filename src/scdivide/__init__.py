@@ -2,7 +2,7 @@
 scDIVIDE — growth-dependent diffusion SDE for unbalanced optimal transport.
 """
 
-from .model import BranchingSDE, BranchingSDE_TimeDep
+from .model import NeuralSDE
 from .model_decoupled import DecoupledSDE
 from .networks import (
     PotentialNetwork,
@@ -26,8 +26,7 @@ from .train import (
 )
 
 __all__ = [
-    "BranchingSDE",
-    "BranchingSDE_TimeDep",
+    "NeuralSDE",
     "DecoupledSDE",
     "PotentialNetwork",
     "TimeDependentPotentialNetwork",

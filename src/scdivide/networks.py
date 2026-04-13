@@ -1,5 +1,5 @@
 """
-Tunable neural network architectures for BranchingSDE.
+Tunable neural network architectures for NeuralSDE.
 
 Supports MLP and ResNet (residual block) architectures with configurable
 activation, layer normalization, dropout, and weight initialization.

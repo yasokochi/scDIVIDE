@@ -44,7 +44,7 @@ This recovers non-negative growth with exp instead of softplus.
 ```
 scDIVIDE/
 └── src/scdivide/
-    ├── model.py          # BranchingSDE (unified model)
+    ├── model.py          # NeuralSDE (unified model)
     ├── networks.py       # NN definitions (Potential, Velocity, Activity)
     ├── regularizers.py   # Regularization functions + REGISTRY
     ├── sinkhorn.py       # Sinkhorn divergence (POT backend)
@@ -56,7 +56,7 @@ Experiment files are in parent `TIGON/`:
 - `scDIVIDE_dev/scripts/` — experiment scripts
 - `scDIVIDE_dev/results/` — outputs
 
-## BranchingSDE — Unified Model
+## NeuralSDE — Unified Model
 
 Constructor flags control model variants:
 
@@ -69,9 +69,9 @@ Constructor flags control model variants:
 | `r0` | float > 0 | Baseline activity scale |
 
 ```python
-from scdivide import BranchingSDE
+from scdivide import NeuralSDE
 
-func = BranchingSDE(
+func = NeuralSDE(
     in_out_dim=2, sigma=0.05, delta=0.1,
     velocity_type="potential",
     velocity_time_dependent=False,

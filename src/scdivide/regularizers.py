@@ -1,5 +1,5 @@
 """
-Regularization functions for BranchingSDE training.
+Regularization functions for NeuralSDE training.
 
 Each function takes the model (func), relevant inputs, and keyword args,
 and returns a scalar loss tensor.
@@ -48,7 +48,7 @@ def velocity_ratio(func, t, x, target=1.0, **kw):
     """(||v|| / diffusion_coeff - target)^2  averaged over samples.
 
     Encourages a fixed ratio between drift and diffusion magnitudes.
-    Uses func.diffusion_coeff() for compatibility with both BranchingSDE
+    Uses func.diffusion_coeff() for compatibility with both NeuralSDE
     and DecoupledSDE.
     """
     x_req = x.detach().requires_grad_(True)

@@ -1,5 +1,5 @@
 """
-Training functions for BranchingSDE.
+Training functions for NeuralSDE.
 
 Provides:
 - sample_data: sample from data with Gaussian noise
@@ -296,7 +296,7 @@ def train_loop(
     """Full training loop.
 
     Args:
-        func: BranchingSDE or BranchingSDE_TimeDep model (already on device).
+        func: NeuralSDE or NeuralSDE_TimeDep model (already on device).
         data_train: list of tensors per training timepoint.
         train_time: list of int indices [0, 1, ...].
         integral_time: list of float times.

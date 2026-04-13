@@ -1,5 +1,5 @@
 """
-BranchingSDE model with growth-dependent diffusion.
+NeuralSDE model with growth-dependent diffusion.
 
 PDE:  d rho/dt = -div(v rho) + (sigma^2 + 2*b*delta^2)/2 * Laplacian(rho) + g rho
 SDE:  dz = v(z) dt + sqrt(sigma^2 + 2*b*delta^2) dW
@@ -29,7 +29,7 @@ from .networks import (
 )
 
 
-class BranchingSDE(nn.Module):
+class NeuralSDE(nn.Module):
     """
     Unified growth-dependent diffusion SDE with (beta, alpha) parametrization.
 
@@ -215,49 +215,3 @@ class BranchingSDE(nn.Module):
         diffusion = torch.zeros_like(y)
         diffusion[:, :self.in_out_dim] = diffusion_coeff.expand(-1, self.in_out_dim)
         return diffusion
-
-
-def BranchingSDE_TimeDep(
-    in_out_dim,
-    sigma=0.05,
-    delta=0.1,
-    alpha=0.0,
-    r0=1.0,
-    # Potential network
-    potential_hidden_dim=64,
-    potential_n_hiddens=4,
-    potential_activation="tanh",
-    potential_arch="mlp",
-    potential_layer_norm=False,
-    potential_dropout=0.0,
-    # Activity network
-    activity_hidden_dim=64,
-    activity_n_hiddens=3,
-    activity_activation="tanh",
-    activity_arch="mlp",
-    activity_layer_norm=False,
-    activity_dropout=0.0,
-):
-    """Backward-compatible factory: creates BranchingSDE with activity_time_dependent=True."""
-    return BranchingSDE(
-        in_out_dim=in_out_dim,
-        sigma=sigma,
-        delta=delta,
-        alpha=alpha,
-        r0=r0,
-        velocity_type="potential",
-        velocity_time_dependent=False,
-        velocity_hidden_dim=potential_hidden_dim,
-        velocity_n_hiddens=potential_n_hiddens,
-        velocity_activation=potential_activation,
-        velocity_arch=potential_arch,
-        velocity_layer_norm=potential_layer_norm,
-        velocity_dropout=potential_dropout,
-        activity_time_dependent=True,
-        activity_hidden_dim=activity_hidden_dim,
-        activity_n_hiddens=activity_n_hiddens,
-        activity_activation=activity_activation,
-        activity_arch=activity_arch,
-        activity_layer_norm=activity_layer_norm,
-        activity_dropout=activity_dropout,
-    )

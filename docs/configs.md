@@ -6,9 +6,9 @@ rest fall back to the defaults shown below. The defaults are tuned for the
 hyperparameters reported in the manuscript.
 
 ```python
-from scdivide import BranchingSDE, train_loop
+from scdivide import NeuralSDE, train_loop
 
-func = BranchingSDE(in_out_dim=3, sigma=0.05, delta=0.1, alpha=0.5).to(device)
+func = NeuralSDE(in_out_dim=3, sigma=0.05, delta=0.1, alpha=0.5).to(device)
 
 results = train_loop(
     func=func,
@@ -28,7 +28,7 @@ results = train_loop(
 
 ---
 
-## `BranchingSDE` constructor
+## `NeuralSDE` constructor
 
 | Key | Default | Description |
 |---|---|---|

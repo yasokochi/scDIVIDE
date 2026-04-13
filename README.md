@@ -42,9 +42,9 @@ pip install torch torchsde POT
 
 ```python
 import torch
-from scdivide import BranchingSDE, train_loop
+from scdivide import NeuralSDE, train_loop
 
-func = BranchingSDE(
+func = NeuralSDE(
     in_out_dim=3,
     sigma=0.05,
     delta=0.1,

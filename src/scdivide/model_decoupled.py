@@ -1,7 +1,7 @@
 """
 DecoupledSDE — growth and diffusion are independent networks.
 
-Unlike BranchingSDE where diffusion = sqrt(sigma^2 + 2*b*delta^2) couples
+Unlike NeuralSDE where diffusion = sqrt(sigma^2 + 2*b*delta^2) couples
 birth rate b to diffusion, DecoupledSDE has:
   - growth_net:    g(t,x) unconstrained (positive/negative)
   - diffusion_net: D(t,x) = sigma_min + softplus(NN output), always positive
