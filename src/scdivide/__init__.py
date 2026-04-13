@@ -3,7 +3,6 @@ scDIVIDE — growth-dependent diffusion SDE for unbalanced optimal transport.
 """
 
 from .model import NeuralSDE
-from .model_decoupled import DecoupledSDE
 from .networks import (
     PotentialNetwork,
     TimeDependentPotentialNetwork,
@@ -16,7 +15,6 @@ from .networks import (
     INIT_METHODS,
 )
 from .sinkhorn import compute_cost_scale, sinkhorn_divergence
-from .regularizers import REGISTRY as REGULARIZER_REGISTRY
 from .train import (
     sample_data,
     build_optimizer,
@@ -27,7 +25,6 @@ from .train import (
 
 __all__ = [
     "NeuralSDE",
-    "DecoupledSDE",
     "PotentialNetwork",
     "TimeDependentPotentialNetwork",
     "VelocityNetwork",
@@ -39,7 +36,6 @@ __all__ = [
     "INIT_METHODS",
     "compute_cost_scale",
     "sinkhorn_divergence",
-    "REGULARIZER_REGISTRY",
     "sample_data",
     "build_optimizer",
     "build_scheduler",
