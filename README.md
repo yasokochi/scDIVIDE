@@ -14,6 +14,8 @@ Install the required packages before running `scDIVIDE`:
 pip install torch torchsde POT
 ```
 
+Please make sure each package is installed in an appropriate way for your environment (e.g. operating system and CUDA version).
+
 `scDIVIDE` uses:
 - [`torch`](https://pytorch.org/) for neural network training
 - [`torchsde`](https://github.com/google-research/torchsde) for stochastic differential equation integration
@@ -28,8 +30,6 @@ You can install `scDIVIDE` from GitHub directory via `pip`.
 ```bash
 pip install git+https://github.com/yasokochi/scDIVIDE.git
 ```
-
-> Important: `
 
 ---
 
