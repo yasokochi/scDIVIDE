@@ -18,7 +18,7 @@ cd scDIVIDE
 pip install -e .
 ```
 
-> Important: `scDIVIDE` is built on **PyTorch**, **TorchSDE**, and **POT**.
+> Important: `scDIVIDE` is built on **[PyTorch](https://pytorch.org/)**, **[torchsde](https://github.com/google-research/torchsde)**, and **[POT](https://pythonot.github.io/)**.
 > Install `torch`, `torchsde`, and `pot` yourself first for your environment before installing or running `scDIVIDE`.
 
 ---
@@ -61,12 +61,9 @@ results = train_loop(
 )
 ```
 
-Only `train_config` is required. SDE, Sinkhorn, optimizer, scheduler, regularizer, and output configs are all optional and fall back to sensible defaults. See [`docs/configs.md`](docs/configs.md) for the full list of options.
+See [`docs/configs.md`](docs/configs.md) for the full list of options.
 
-> **Important:** scDIVIDE uses Sinkhorn divergence as the fitting loss. Make sure the Sinkhorn iterations converge by checking the loss curve and adjusting `sinkhorn_config` (e.g., `epsilon`, `n_iter`) if needed.
-
-> Note: the built-in defaults are tuned for the **mouse hematopoiesis** dataset. For the three-gene dataset, please use the hyperparameters reported in the manuscript.
-
+> **Important:** scDIVIDE uses Sinkhorn divergence as the fitting loss. Please make sure the Sinkhorn iterations converge and adjust `sinkhorn_config` (e.g., `epsilon`, `n_iter`) if needed.
 > For a complete runnable example, see [examples](examples/).
 
 ---
@@ -88,12 +85,10 @@ Approximate `scDIVIDE` training time for 500 steps on a single NVIDIA A6000 GPU:
 
 | Dataset | Time for 500 steps |
 |---------|-------------------:|
-| Three-gene (3D) | 790 s |
-| Mouse hematopoiesis (50D) | 260 s |
+| Three-gene (3D, 5 timepoints) | 790 s |
+| Mouse hematopoiesis (50D, 3 timepoints) | 260 s |
 
 These values are rough references derived from the supplementary benchmark by scaling the reported per-100-step runtime by 5.
-In that benchmark, `scDIVIDE` used 400 subsampled particles per iteration.
-With holdout index `k = 1`, the three-gene dataset retained 3 training intervals and the mouse hematopoiesis dataset retained 1 training interval.
 
 ---
 
@@ -101,18 +96,9 @@ With holdout index `k = 1`, the three-gene dataset retained 3 training intervals
 
 | Item | Value |
 |------|-------|
-| Core framework | PyTorch |
-| SDE solver | TorchSDE |
-| OT library | POT |
+| Core framework | [PyTorch]((https://pytorch.org/)) |
+| SDE solver | [torchsde](https://github.com/google-research/torchsde) |
+| OT library | [POT](https://pythonot.github.io/) |
 | Example | `examples/three_gene_alpha05.ipynb` |
 | GitHub repository | `scDIVIDE` |
 
----
-
-## 7. Citation
-
-If you use `scDIVIDE` in your work, please cite:
-
-```text
-hogehoge
-```
