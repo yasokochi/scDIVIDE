@@ -4,6 +4,8 @@ scDIVIDE models developmental trajectories with growth-dependent diffusion stoch
 
 > Cite: Yasushi Okochi, Yoshihito Sawazaki, Yohei Kondo, and Honda Naoki, bioRxiv, 2026
 
+![Graphical Abstract](images/GA_ver04.png)
+
 ---
 
 ## 1. Install dependencies first
