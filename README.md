@@ -2,7 +2,7 @@
 
 scDIVIDE models developmental trajectories with growth-dependent diffusion stochastic differential equations and unbalanced optimal transport.
 
-> Cite: hogehoge
+> Cite: Yasushi Okochi, Yoshihito Sawazaki, Yohei Kondo, and Honda Naoki, bioRxiv, 2026
 
 ---
 
@@ -65,12 +65,10 @@ See [`docs/configs.md`](docs/configs.md) for the full list of options.
 
 ## 4. Example Notebook
 
-A bundled notebook example based on the synthetic three-gene dataset with `alpha = 0.5` is included in this repository:
+A notebook example based on the synthetic three-gene dataset is included in this repository:
 
 - `examples/three_gene_alpha05.ipynb`
 - `examples/data/three_gene_scdivide_alpha05_data.csv`
-
-Open the notebook from the repository root and run the cells in order.
 
 ---
 
@@ -83,7 +81,7 @@ Approximate `scDIVIDE` training time for 500 steps on a single NVIDIA A6000 GPU:
 | Three-gene (3D, 5 timepoints) | 790 s |
 | Mouse hematopoiesis (50D, 3 timepoints) | 260 s |
 
-These values are rough references derived from the supplementary benchmark by scaling the reported per-100-step runtime by 5.
+These values are rough references derived from the benchmark by scaling the reported per-100-step runtime by 5.
 
 ---
 
