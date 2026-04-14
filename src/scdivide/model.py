@@ -66,15 +66,11 @@ class NeuralSDE(nn.Module):
         velocity_hidden_dim=64,
         velocity_n_hiddens=4,
         velocity_activation="tanh",
-        velocity_layer_norm=False,
-        velocity_dropout=0.0,
         # Activity config
         activity_time_dependent=False,
         activity_hidden_dim=64,
         activity_n_hiddens=3,
         activity_activation="tanh",
-        activity_layer_norm=False,
-        activity_dropout=0.0,
     ):
         super().__init__()
         self.in_out_dim = in_out_dim
@@ -95,8 +91,6 @@ class NeuralSDE(nn.Module):
             hidden_dim=velocity_hidden_dim,
             n_hiddens=velocity_n_hiddens,
             activation=velocity_activation,
-            use_layer_norm=velocity_layer_norm,
-            dropout=velocity_dropout,
         )
         if velocity_type == "potential":
             if velocity_time_dependent:
@@ -120,8 +114,6 @@ class NeuralSDE(nn.Module):
             hidden_dim=activity_hidden_dim,
             n_hiddens=activity_n_hiddens,
             activation=activity_activation,
-            use_layer_norm=activity_layer_norm,
-            dropout=activity_dropout,
         )
         if activity_time_dependent:
             self.activity_net = TimeDependentActivityNetwork(**act_kw)

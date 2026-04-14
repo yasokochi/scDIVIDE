@@ -1,8 +1,7 @@
 """
 Tunable neural network architectures for NeuralSDE.
 
-Supports MLP with configurable activation, layer normalization,
-dropout, and weight initialization.
+Supports MLP with configurable activation and weight initialization.
 """
 
 import torch
@@ -35,7 +34,7 @@ class MLP(nn.Module):
     """Plain MLP: Linear -> Act -> ... -> Linear."""
 
     def __init__(self, in_dim, out_dim, hidden_dim=64, n_hiddens=4,
-                 activation="tanh", use_layer_norm=False, dropout=0.0):
+                 activation="tanh"):
         super().__init__()
         act_fn = _get_activation(activation)
 
@@ -44,11 +43,7 @@ class MLP(nn.Module):
 
         for i in range(len(dims) - 2):
             layers.append(nn.Linear(dims[i], dims[i + 1]))
-            if use_layer_norm:
-                layers.append(nn.LayerNorm(dims[i + 1]))
             layers.append(act_fn)
-            if dropout > 0:
-                layers.append(nn.Dropout(dropout))
 
         layers.append(nn.Linear(dims[-2], dims[-1]))
         self.net = nn.Sequential(*layers)
@@ -65,14 +60,11 @@ class PotentialNetwork(nn.Module):
     """phi(x) -> scalar. gradient() returns nabla phi(x)."""
 
     def __init__(self, in_dim, hidden_dim=64, n_hiddens=4,
-                 activation="tanh",
-                 use_layer_norm=False, dropout=0.0):
+                 activation="tanh"):
         super().__init__()
         self.in_dim = in_dim
         self.net = MLP(in_dim, 1, hidden_dim, n_hiddens,
-                       activation=activation,
-                       use_layer_norm=use_layer_norm,
-                       dropout=dropout)
+                       activation=activation)
 
     def forward(self, x):
         return self.net(x)
@@ -96,13 +88,10 @@ class ActivityNetwork(nn.Module):
     """beta(x) -> scalar (unconstrained, no activation on output)."""
 
     def __init__(self, in_dim, hidden_dim=64, n_hiddens=3,
-                 activation="tanh",
-                 use_layer_norm=False, dropout=0.0):
+                 activation="tanh"):
         super().__init__()
         self.net = MLP(in_dim, 1, hidden_dim, n_hiddens,
-                       activation=activation,
-                       use_layer_norm=use_layer_norm,
-                       dropout=dropout)
+                       activation=activation)
 
     def forward(self, x):
         return self.net(x)
@@ -112,14 +101,11 @@ class TimeDependentActivityNetwork(nn.Module):
     """beta(t, x) -> scalar (unconstrained, no activation on output)."""
 
     def __init__(self, in_dim, hidden_dim=64, n_hiddens=3,
-                 activation="tanh",
-                 use_layer_norm=False, dropout=0.0):
+                 activation="tanh"):
         super().__init__()
         self.in_dim = in_dim
         self.net = MLP(in_dim + 1, 1, hidden_dim, n_hiddens,
-                       activation=activation,
-                       use_layer_norm=use_layer_norm,
-                       dropout=dropout)
+                       activation=activation)
 
     def forward(self, t, x):
         t_tensor = _broadcast_t(t, x)
@@ -141,14 +127,11 @@ class TimeDependentPotentialNetwork(nn.Module):
     """phi(t, x) -> scalar. gradient(t, x) returns nabla_x phi(t, x)."""
 
     def __init__(self, in_dim, hidden_dim=64, n_hiddens=4,
-                 activation="tanh",
-                 use_layer_norm=False, dropout=0.0):
+                 activation="tanh"):
         super().__init__()
         self.in_dim = in_dim
         self.net = MLP(in_dim + 1, 1, hidden_dim, n_hiddens,
-                       activation=activation,
-                       use_layer_norm=use_layer_norm,
-                       dropout=dropout)
+                       activation=activation)
 
     def forward(self, t, x):
         t_tensor = _broadcast_t(t, x)
@@ -174,13 +157,10 @@ class VelocityNetwork(nn.Module):
     """v(x) -> d-dim vector (free-form MLP)."""
 
     def __init__(self, in_dim, hidden_dim=64, n_hiddens=4,
-                 activation="tanh",
-                 use_layer_norm=False, dropout=0.0):
+                 activation="tanh"):
         super().__init__()
         self.net = MLP(in_dim, in_dim, hidden_dim, n_hiddens,
-                       activation=activation,
-                       use_layer_norm=use_layer_norm,
-                       dropout=dropout)
+                       activation=activation)
 
     def forward(self, x):
         return self.net(x)
@@ -190,14 +170,11 @@ class TimeDependentVelocityNetwork(nn.Module):
     """v(t, x) -> d-dim vector (free-form MLP)."""
 
     def __init__(self, in_dim, hidden_dim=64, n_hiddens=4,
-                 activation="tanh",
-                 use_layer_norm=False, dropout=0.0):
+                 activation="tanh"):
         super().__init__()
         self.in_dim = in_dim
         self.net = MLP(in_dim + 1, in_dim, hidden_dim, n_hiddens,
-                       activation=activation,
-                       use_layer_norm=use_layer_norm,
-                       dropout=dropout)
+                       activation=activation)
 
     def forward(self, t, x):
         t_tensor = _broadcast_t(t, x)
