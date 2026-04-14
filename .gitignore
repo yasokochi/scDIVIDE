@@ -216,3 +216,4 @@ data/*
 !data/.gitkeep
 
 CLAUDE.md
+.claude/
